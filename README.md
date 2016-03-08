@@ -7,3 +7,8 @@ possibly need to know about the CHIP8 here: http://devernay.free.fr/hacks/chip8/
 
 Also to mikezaby who previously did the same thing, and who's code I learned a lot from. Probably would have never figured out SDl
 if it weren't for reading through your stuff. See his work here: https://github.com/mikezaby/chip-8.rs
+
+Things left TODO:
+1. break up into modules so it's no longer one monstrous main.rs
+2. optimize it some more
+3. if it's still slow, implement dynamic instruction compilation.
