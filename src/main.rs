@@ -191,7 +191,7 @@ impl<'a> CHIP8<'a> {
             0x00E0 => {
                 self.screen = [[0x00; 64]; 32];
                 //should set draw flag?
-                //self.v[15] = 1;
+                self.draw_flag = true;
             },
             0x00EE => {
                 self.pc = self.stack[(self.sp-1) as usize];
@@ -206,7 +206,7 @@ impl<'a> CHIP8<'a> {
                  self.sp += 1;
              },
             add @ 0x3000 ... 0x3FFF => {
-                let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
+                let x: u8 = ((add & 0x0F00) >> 8) as u8;
                 let kk: u8 = (add & 0x00FF) as u8;
                 if self.v[x as usize] == kk {
                     self.pc += 2;
@@ -220,19 +220,19 @@ impl<'a> CHIP8<'a> {
                 }
             },
             add @ 0x5000 ... 0x5FFF => {
-                let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
-                let y:u8 = (add & 0x00F0).rotate_right(4) as u8;
+                let x: u8 = ((add & 0x0F00) >> 8) as u8;
+                let y:u8 = ((add & 0x00F0) >> 4) as u8;
                 if self.v[x as usize] == self.v[y as usize] {
                     self.pc += 2;
                 }
             },
             add @ 0x6000 ... 0x6FFF => {
-                let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
+                let x: u8 = ((add & 0x0F00) >> 8) as u8;
                 let kk: u8 = (add & 0x00FF) as u8;
                 self.v[x as usize] = kk;
             },
             add @ 0x7000 ... 0x7FFF => {
-                let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
+                let x: u8 = ((add & 0x0F00) >> 8) as u8;
                 let kk: u8 = (add & 0x00FF) as u8;
                 self.v[x as usize] = self.v[x as usize].wrapping_add(kk);
             },
@@ -284,8 +284,8 @@ impl<'a> CHIP8<'a> {
                     }
                 },
                 add @ 0x9000 ... 0x9FF0 => {
-                    let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
-                    let y:u8 = (add & 0x00F0).rotate_right(4) as u8;
+                    let x: u8 = ((add & 0x0F00) >> 8) as u8;
+                    let y:u8 = ((add & 0x00F0) >> 4) as u8;
                     if self.v[x as usize] != self.v[y as usize] {
                         self.pc += 2;
                     }
@@ -297,7 +297,7 @@ impl<'a> CHIP8<'a> {
                     self.pc = (0x0FFF & add).wrapping_add(self.v[0] as u16);
                 },
                 add @ 0xC000 ... 0xCFFF => {
-                    let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
+                    let x: u8 = ((add & 0x0F00) >> 8) as u8;
                     let kk: u8 = (add & 0x00FF) as u8;
                     self.v[x as usize] = self.rng.gen::<u8>() & kk;
                 },
@@ -306,51 +306,39 @@ impl<'a> CHIP8<'a> {
                     let y: usize = ((add & 0x00F0) >> 4) as usize;
                     let n:u8 = (add & 0x000F) as u8;
                     self.draw_flag = true;
-                    //new way doing it by pixel
-                    //for n bytes
                     self.v[15] = 0;
-                    //println!("v[x]: {:?} v[y]: {:?}", self.v[x], self.v[y]);
                     let mut vy: usize;
                     let mut vx: usize;
                     for i in 0..n {
-                        //if self.v[y] + n >= 32 {break;}
                         vy = ((self.v[y] + i) % 32) as usize;
                         let mut newByte = self.memory[(self.I + i as u16) as usize];
-                        //println!("n {:?}", i);
-                        //for 8 pixels
                         for p in 0..8 {
                             vx = ((self.v[x] + p) % 64) as usize;
-                            //if self.v[x] + p >= 64 {break;}
-                            //println!("p {:?}", p);
                             let mut bit: u8 = (newByte & 0b10000000) as u8;
                             bit = bit.rotate_left(1) as u8;
-                            //println!("{:X}", bit);
                             newByte = newByte.rotate_left(1);
                             if bit == 1 {
-                            //if bit == 1 && self.screen[(self.v[x] + p) as usize][(self.v[y] + n) as usize] == 1 {
                                 if self.screen[vy][vx] == 1 {self.v[15] = 1;}
                                 self.screen[vy][vx] ^= bit;
                             }
-
-                            //self.screen[(self.v[x] + p) as usize][(self.v[y] + n) as usize] = bit;
                         }
                     }
                 },
                 add @ 0xE000 ... 0xEFFF => {
-                    let x: u8 = (add & 0x0F00).rotate_right(8) as u8;
+                    let x = ((add & 0x0F00) >> 8) as usize;
                     let nn : u16 = (add & 0x00FF) as u16;
                     match nn {
                         0x9E => {
-                            if self.keys[self.v[x as usize] as usize] { self.pc += 2;}
+                            if self.keys[self.v[x] as usize] { self.pc += 2;}
                         },
                         0xA1 =>{
-                            if !self.keys[self.v[x as usize] as usize] { self.pc += 2;}
+                            if !self.keys[self.v[x] as usize] { self.pc += 2;}
                         },
                         _ => (),
                     }
                 },
                 add @ 0xF000 ... 0xFFFF => {
-                    let x: usize = (add & 0x0F00).rotate_right(8) as usize;
+                    let x: usize = ((add & 0x0F00) >> 8) as usize;
                     let nn : u16 = (add & 0x00FF) as u16;
                     match nn {
                         0x07 => {self.v[x] = self.delay;},
@@ -405,7 +393,7 @@ fn main(){
     let mut opCode : u16;
 
     let mut event_pump = sdlContext.event_pump().unwrap();
-    chip.load("PONG".to_string());
+    chip.load("TETRIS".to_string());
     //for memAdd in 0..0xFF {
     //    println!("memAdd: {:X} memValue: {:X}", memAdd, chip.memory[(0x0200 + memAdd) as usize]);
     //}
